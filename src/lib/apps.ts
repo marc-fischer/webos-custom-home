@@ -1,5 +1,3 @@
-import type {ScreenId} from './screens';
-
 export interface AppItem {
 	id: string;         // webOS appId — used for the real luna launch
 	title: string;
@@ -12,46 +10,91 @@ export interface AppItem {
 	launchType?: 'app' | 'input' | 'internal';
 }
 
-// Curated from THIS TV's real installed apps (appinfo.json). IDs are live and launch is
-// real (App.tsx → launchApp, permission confirmed on-device). Icons are the apps' real
-// artwork, copied off the TV into public/icons/ at build time (see scripts / README).
-export const APPS: Record<Exclude<ScreenId, 'home'>, AppItem[]> = {
-	// Up — consoles on HDMI inputs (launching the input app switches the TV to it).
-	game: [
-		{id: 'com.webos.app.hdmi2', title: 'PS5', color: '#2f6cf6', launchType: 'input'},
-		{id: 'com.webos.app.hdmi1', title: 'Switch', color: '#e60012', launchType: 'input'}
-	],
-	// Down — streaming services actually installed on the TV.
-	stream: [
-		{id: 'netflix', title: 'Netflix', color: '#e50914', icon: 'icons/netflix.png'},
-		{id: 'com.disney.disneyplus-prod', title: 'Disney+', color: '#1f6feb', icon: 'icons/disney.png'},
-		{id: 'amazon', title: 'Prime Video', color: '#00a8e1', icon: 'icons/prime.png'},
-		{id: 'com.wbd.stream', title: 'HBO Max', color: '#7b2ff7', icon: 'icons/hbomax.png'},
-		{id: 'hulu', title: 'Hulu', color: '#1ce783', icon: 'icons/hulu.png'},
-		{id: 'com.apple.appletv', title: 'Apple TV', color: '#b8bcc4', icon: 'icons/appletv.png'},
-		{id: 'youtube.leanback.ytv.v1', title: 'YouTube TV', color: '#ff4e45', icon: 'icons/youtubetv.png'},
-		{id: 'com.plutotv.app', title: 'Pluto TV', color: '#ffdd00', icon: 'icons/pluto.png'},
-		{id: 'com.tubitv.ott.tubi', title: 'Tubi', color: '#8b5cf6', icon: 'icons/tubi.png'},
-		{id: 'com.espn.espnplus-prod', title: 'ESPN', color: '#d50a0a', icon: 'icons/espn.png'},
-		{id: 'imdbtv', title: 'Freevee', color: '#f5c518', icon: 'icons/freevee.png'},
-		{id: 'vudu', title: 'Fandango', color: '#3399ff', icon: 'icons/fandango.png'}
-	],
-	// Left — music / video / casting.
-	media: [
-		{id: 'youtube.leanback.v4', title: 'YouTube', color: '#ff0033', icon: 'icons/youtube.png'},
-		{id: 'spotify-beehive', title: 'Spotify', color: '#1db954', icon: 'icons/spotify.png'},
-		{id: 'twitch.adamffdev.v1', title: 'Twitch', color: '#9146ff', icon: 'icons/twitch.jpg'},
-		{id: 'com.instantbits.cast.webvideo', title: 'Web Video Caster', color: '#ff9500', icon: 'icons/webvideo.png'}
-	],
-	// Right — tools, games & everything else.
-	misc: [
-		{id: 'org.webosbrew.hbchannel', title: 'Homebrew', color: '#34d399', icon: 'icons/homebrew.png'},
-		{id: 'com.twin.app.gamingportal', title: 'Gaming Portal', color: '#a855f7', icon: 'icons/gamingportal.png'},
-		{id: 'com.ubisoft.lg.justdancenow', title: 'Just Dance', color: '#ff2e93', icon: 'icons/justdance.png'},
-		{id: 'com.twin.app.homegym', title: 'LG Fitness', color: '#22c55e', icon: 'icons/fitness.png'},
-		{id: 'com.lgshop.app', title: 'ShopTime', color: '#f59e0b', icon: 'icons/shoptime.png'},
-		// In-app settings overlay (com.webos.app.settings probed "not exist" on this TV,
-		// and the user wants real in-app settings anyway).
-		{id: 'internal.settings', title: 'Settings', color: '#94a3b8', icon: 'icons/settings.png', launchType: 'internal'}
-	]
+// Artwork for well-known apps: brand accent + an icon bundled in public/icons/. The
+// app LIST itself is read live from the TV (see appsFromLaunchPoints) — this only
+// dresses up ids we recognise; everything else gets the TV's own icon or a monogram.
+const KNOWN: Record<string, {color: string; icon?: string}> = {
+	'netflix': {color: '#e50914', icon: 'icons/netflix.png'},
+	'com.disney.disneyplus-prod': {color: '#1f6feb', icon: 'icons/disney.png'},
+	'amazon': {color: '#00a8e1', icon: 'icons/prime.png'},
+	'com.wbd.stream': {color: '#7b2ff7', icon: 'icons/hbomax.png'},
+	'hulu': {color: '#1ce783', icon: 'icons/hulu.png'},
+	'com.apple.appletv': {color: '#b8bcc4', icon: 'icons/appletv.png'},
+	'youtube.leanback.ytv.v1': {color: '#ff4e45', icon: 'icons/youtubetv.png'},
+	'com.plutotv.app': {color: '#ffdd00', icon: 'icons/pluto.png'},
+	'com.tubitv.ott.tubi': {color: '#8b5cf6', icon: 'icons/tubi.png'},
+	'com.espn.espnplus-prod': {color: '#d50a0a', icon: 'icons/espn.png'},
+	'imdbtv': {color: '#f5c518', icon: 'icons/freevee.png'},
+	'vudu': {color: '#3399ff', icon: 'icons/fandango.png'},
+	'youtube.leanback.v4': {color: '#ff0033', icon: 'icons/youtube.png'},
+	'spotify-beehive': {color: '#1db954', icon: 'icons/spotify.png'},
+	'twitch.adamffdev.v1': {color: '#9146ff', icon: 'icons/twitch.jpg'},
+	'com.instantbits.cast.webvideo': {color: '#ff9500', icon: 'icons/webvideo.png'},
+	'org.webosbrew.hbchannel': {color: '#34d399', icon: 'icons/homebrew.png'},
+	'com.twin.app.gamingportal': {color: '#a855f7', icon: 'icons/gamingportal.png'},
+	'com.ubisoft.lg.justdancenow': {color: '#ff2e93', icon: 'icons/justdance.png'},
+	'com.twin.app.homegym': {color: '#22c55e', icon: 'icons/fitness.png'},
+	'com.lgshop.app': {color: '#f59e0b', icon: 'icons/shoptime.png'}
 };
+
+const PALETTE = ['#7ca8ff', '#b39cff', '#5eead4', '#7ee7a6', '#f59e0b', '#ff7a90', '#38bdf8', '#e879f9'];
+function colorFor (id: string): string {
+	let h = 0;
+	for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) >>> 0;
+	return PALETTE[h % PALETTE.length];
+}
+
+/** In-app settings overlay — always the last tile on the Apps screen. */
+export const SETTINGS_APP: AppItem = {
+	id: 'internal.settings', title: 'Settings', color: '#94a3b8', icon: 'icons/settings.png', launchType: 'internal'
+};
+
+const OWN_ID = 'tld.my.customhome';
+const INPUT_ID = /^com\.webos\.app\.(hdmi|externalinput)/;
+
+/** Everything on the TV's launcher (webOS already leaves out hidden system apps),
+ *  minus ourselves and the input "apps" (those live on the Inputs screen), A→Z. */
+export function appsFromLaunchPoints (points: {id: string; title: string; icon?: string}[]): AppItem[] {
+	const seen = new Set<string>();
+	const apps: AppItem[] = [];
+	for (const lp of points) {
+		if (!lp.id || lp.id === OWN_ID || INPUT_ID.test(lp.id) || seen.has(lp.id)) continue;
+		seen.add(lp.id);
+		const known = KNOWN[lp.id];
+		// Our service hands back a copy inside our own dir (relative path). A raw absolute
+		// path is another app's dir, which webOS may block — AppArt then shows a monogram.
+		const tvIcon = lp.icon ? (lp.icon.charAt(0) === '/' ? `file://${lp.icon}` : lp.icon) : undefined;
+		apps.push({id: lp.id, title: lp.title || lp.id, color: known?.color ?? colorFor(lp.id), icon: known?.icon ?? tvIcon});
+	}
+	apps.sort((a, b) => a.title.localeCompare(b.title));
+	return apps;
+}
+
+const INPUT_COLORS = ['#2f6cf6', '#e60012', '#22c55e', '#f59e0b'];
+
+/** HDMI 1–4, used until (or unless) the TV reports its real inputs. */
+export const DEFAULT_INPUTS: AppItem[] = [1, 2, 3, 4].map((n) => ({
+	id: `com.webos.app.hdmi${n}`, title: `HDMI ${n}`, color: INPUT_COLORS[n - 1], launchType: 'input' as const
+}));
+
+/** HDMI inputs as reported by the TV (keeps the names you gave them in the TV's menu). */
+export function inputsFromDevices (devices: {appId?: string; label?: string; connected?: boolean}[]): AppItem[] {
+	const inputs: AppItem[] = [];
+	for (const d of devices) {
+		const m = /^com\.webos\.app\.hdmi(\d+)$/.exec(d.appId || '');
+		if (!m) continue;
+		const n = Number(m[1]);
+		const name = `HDMI ${n}`;
+		const label = d.label && d.label !== name ? `${d.label} · ${name}` : name;
+		inputs.push({id: d.appId!, title: label, color: INPUT_COLORS[(n - 1) % INPUT_COLORS.length], launchType: 'input'});
+	}
+	inputs.sort((a, b) => a.id.localeCompare(b.id));
+	return inputs;
+}
+
+/** Off-TV (desktop dev) stand-in so the Apps screen isn't empty. */
+export const DEMO_APPS: AppItem[] = appsFromLaunchPoints([
+	{id: 'netflix', title: 'Netflix'}, {id: 'youtube.leanback.v4', title: 'YouTube'},
+	{id: 'amazon', title: 'Prime Video'}, {id: 'spotify-beehive', title: 'Spotify'},
+	{id: 'org.webosbrew.hbchannel', title: 'Homebrew Channel'}, {id: 'com.webos.app.browser', title: 'Web Browser'}
+]);

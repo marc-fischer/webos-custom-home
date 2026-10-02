@@ -11,7 +11,7 @@ function useNow (tickMs = 1000) {
 	return now;
 }
 
-export function Analog ({date, size = 104}: {date: Date; size?: number}) {
+function Analog ({date, size = 104}: {date: Date; size?: number}) {
 	const s = date.getSeconds();
 	const m = date.getMinutes();
 	const h = date.getHours() % 12;
@@ -28,8 +28,8 @@ export function Analog ({date, size = 104}: {date: Date; size?: number}) {
 		);
 	};
 	return (
-		<svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} style={{filter: 'drop-shadow(0 0 10px rgba(140,170,255,0.18))'}}>
-			<circle cx={c} cy={c} r={c - 2} fill="rgba(255,255,255,0.02)" stroke="rgba(255,255,255,0.10)" strokeWidth={1.5} />
+		<svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+			<circle cx={c} cy={c} r={c - 2} fill="none" stroke="#3a3a44" strokeWidth={2} />
 			{Array.from({length: 12}, (_, i) => {
 				const rad = (i * 30 - 90) * (Math.PI / 180);
 				const r1 = c - 7, r2 = c - 4;
@@ -38,12 +38,12 @@ export function Analog ({date, size = 104}: {date: Date; size?: number}) {
 						key={i}
 						x1={c + Math.cos(rad) * r1} y1={c + Math.sin(rad) * r1}
 						x2={c + Math.cos(rad) * r2} y2={c + Math.sin(rad) * r2}
-						stroke="rgba(255,255,255,0.18)" strokeWidth={1.5}
+						stroke="#8a8a94" strokeWidth={2}
 					/>
 				);
 			})}
-			{hand(h * 30 + m * 0.5, c * 0.48, 3, 'rgba(255,255,255,0.85)', 'h')}
-			{hand(m * 6 + s * 0.1, c * 0.70, 2, 'rgba(255,255,255,0.85)', 'm')}
+			{hand(h * 30 + m * 0.5, c * 0.48, 3, '#ffffff', 'h')}
+			{hand(m * 6 + s * 0.1, c * 0.70, 2, '#ffffff', 'm')}
 			{hand(s * 6, c * 0.78, 1, 'var(--primary)', 's')}
 			<circle cx={c} cy={c} r={2.5} fill="var(--primary)" />
 		</svg>
@@ -72,7 +72,7 @@ export default function Clock ({compact = false}: {compact?: boolean}) {
 						{digital}
 					</ElasticText>
 				</div>
-				{ampm && <div className="text-xl font-medium text-white/50">{ampm}</div>}
+				{ampm && <div className="text-xl font-medium text-white/70">{ampm}</div>}
 			</div>
 		</div>
 	);

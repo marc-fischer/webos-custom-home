@@ -13,7 +13,7 @@ The TV also needs internet access (it downloads the app itself).
 ## Install
 
 Download the launcher for your OS from the
-[**v0.4.2 release**](https://github.com/zzeppieri/webos-custom-home/releases/tag/v0.4.2)
+[**v0.4.3 release**](https://github.com/marc-fischer/webos-custom-home/releases/tag/v0.4.3)
 and run it:
 
 | Your computer | File | How to run |
@@ -32,13 +32,13 @@ changed it).
 If you already live in a terminal, skip the launchers entirely:
 
 ```sh
-ssh root@<TV_IP> "curl -fsSL https://github.com/zzeppieri/webos-custom-home/releases/download/v0.4.2/tv-install.sh | sh"
+ssh root@<TV_IP> "curl -fsSL https://github.com/marc-fischer/webos-custom-home/releases/download/v0.4.3/tv-install.sh | sh"
 ```
 
 ## Uninstall
 
 ```sh
-ssh root@<TV_IP> "curl -fsSL https://github.com/zzeppieri/webos-custom-home/releases/download/v0.4.2/tv-uninstall.sh | sh"
+ssh root@<TV_IP> "curl -fsSL https://github.com/marc-fischer/webos-custom-home/releases/download/v0.4.3/tv-uninstall.sh | sh"
 ```
 
 Nothing here touches the read-only OS, so uninstalling fully restores stock

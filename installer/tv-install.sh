@@ -6,19 +6,19 @@
 # enables boot autostart + the HOME-button takeover and launches it. No ares-cli,
 # no Node, no scp, no build — the TV downloads the ipk itself.
 #
-# Requires a ROOTED webOS TV (Homebrew Channel + SSH). Pinned to release v0.4.2.
+# Requires a ROOTED webOS TV (Homebrew Channel + SSH). Pinned to release v0.4.3.
 # Everything here is reversible; nothing touches the read-only OS partitions.
 
 APP_ID="tld.my.customhome"
-IPK_URL="https://github.com/zzeppieri/webos-custom-home/releases/download/v0.4.2/tld.my.customhome_0.4.2_all.ipk"
-IPK_HASH="98a2f9678f1c6e02799326d15c0936b9d36ad03f555c787666b30f0130debfa4"  # sha256 of the ipk
+IPK_URL="https://github.com/marc-fischer/webos-custom-home/releases/download/v0.4.3/tld.my.customhome_0.4.3_all.ipk"
+IPK_HASH="379674732370cae4ce06f409b3829cd284dc97cc0699bafeb13b8d2645ed249a"  # sha256 of the ipk
 SVCDIR="/media/developer/apps/usr/palm/services/${APP_ID}.service"
 INITD="/var/lib/webosbrew/init.d/50-customhome"
 HB="luna://org.webosbrew.hbchannel.service/install"
 
 fail () { echo "ERROR: $1" >&2; exit 1; }
 
-echo "==> webOS Custom Home installer (v0.4.2)"
+echo "==> webOS Custom Home installer (v0.4.3)"
 
 # --- sanity checks: is this actually a rooted webOS TV? ---
 command -v luna-send >/dev/null 2>&1 || fail "luna-send not found — this doesn't look like a webOS TV."

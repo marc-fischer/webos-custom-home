@@ -8,6 +8,8 @@
 //   --watch  also read the remote (no grab) and launch the app when HOME is pressed.
 var Service = require('webos-service');
 var fs = require('fs');
+var path = require('path');
+var execFile = require('child_process').execFile;
 
 var APP_ID = 'tld.my.customhome';
 var HOME_CODE = 773;          // HOME on this TV's Magic Remote
@@ -27,6 +29,58 @@ try { fs.writeFileSync('/tmp/home-svc.pid', String(process.pid)); } catch (e) { 
 log('start pid=' + process.pid + ' args=[' + ARGS.join(' ') + ']');
 
 service.register('status', function (m) { m.respond({ returnValue: true, running: true, pid: process.pid }); });
+
+// --- App / input lists for the web app -------------------------------------------------
+// The web app itself is a sandboxed dev-mode app: on webOS 6 it may not call
+// applicationManager/listLaunchPoints or the input manager. This process is started as root
+// by autostart.sh, so it asks via luna-send (full bus access) and hands the result back.
+// Falls back to a plain service.call, which works when the service is elevated.
+function lunaQuery(uri, cb) {
+	execFile('/usr/bin/luna-send', ['-n', '1', uri, '{}'], { timeout: 6000, maxBuffer: 8 * 1024 * 1024 }, function (err, stdout) {
+		var data = null;
+		if (!err) { try { data = JSON.parse(stdout); } catch (e) { /* fall through */ } }
+		if (data && data.returnValue !== false) { cb(null, data); return; }
+		var why = err ? err.message : (data && data.errorText) || 'bad luna-send reply';
+		service.call(uri, {}, function (m) {
+			var p = m && m.payload;
+			if (p && p.returnValue !== false) { cb(null, p); }
+			else { cb(why + ' / ' + ((p && p.errorText) || 'service.call failed')); }
+		});
+	});
+}
+
+// Web apps can't read other apps' icon files, so copy each icon into our own app dir
+// (root-only; skipped silently otherwise) and return a path relative to index.html.
+var APP_DIR = '/media/developer/apps/usr/palm/applications/' + APP_ID;
+function exportIcon(id, src) {
+	try {
+		if (!src || src.charAt(0) !== '/' || !fs.existsSync(src)) return '';
+		var dir = APP_DIR + '/tvicons';
+		if (!fs.existsSync(dir)) fs.mkdirSync(dir);
+		var name = id.replace(/[^A-Za-z0-9._-]/g, '_') + (path.extname(src) || '.png');
+		var dst = dir + '/' + name;
+		if (!fs.existsSync(dst) || fs.statSync(dst).size !== fs.statSync(src).size) fs.copyFileSync(src, dst);
+		return 'tvicons/' + name;
+	} catch (e) { return ''; }
+}
+
+service.register('listApps', function (m) {
+	lunaQuery('luna://com.webos.applicationManager/listLaunchPoints', function (err, data) {
+		if (err) { log('listApps: ' + err); m.respond({ returnValue: false, errorText: String(err) }); return; }
+		var points = (data.launchPoints || []).map(function (lp) {
+			return { id: lp.id, title: lp.title, icon: exportIcon(lp.id, lp.largeIcon || lp.icon) };
+		});
+		log('listApps: ' + points.length + ' launch points');
+		m.respond({ returnValue: true, launchPoints: points });
+	});
+});
+
+service.register('listInputs', function (m) {
+	lunaQuery('luna://com.webos.service.eim/getAllInputStatus', function (err, data) {
+		if (err) { log('listInputs: ' + err); m.respond({ returnValue: false, errorText: String(err) }); return; }
+		m.respond({ returnValue: true, devices: data.devices || [] });
+	});
+});
 
 function launchId(id, reason) {
 	service.call('luna://com.webos.applicationManager/launch', { id: id }, function (m) {

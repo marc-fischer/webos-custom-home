@@ -1,7 +1,7 @@
 import {useEffect, useRef, useState, type RefObject} from 'react';
 import {APP_VERSION, type HomeConfig} from '../lib/config';
 import {resetOrder, CATS, type CatId} from '../lib/order';
-import {SCREENS} from '../lib/screens';
+import {CAT_META} from '../lib/screens';
 import type {AppItem} from '../lib/apps';
 import {searchCity, type GeoResult} from '../service/weather';
 
@@ -10,6 +10,7 @@ import {searchCity, type GeoResult} from '../service/weather';
 // Back closes (or leaves a sub-pane). No blur (TV GPU).
 
 const ACCENT = '#7ca8ff';
+const ROW_FOCUS = '#101a30';   // solid (no alpha) so the focus bar has a hard edge
 
 type Row =
 	| {kind: 'choice'; label: string; values: string[]; labels: string[]; get: (c: HomeConfig) => string; set: (c: HomeConfig, v: string) => HomeConfig}
@@ -27,22 +28,6 @@ const ROWS: Row[] = [
 		get: (c) => c.tempUnit, set: (c, v) => ({...c, tempUnit: v as HomeConfig['tempUnit']})
 	},
 	{kind: 'location', label: 'Location'},
-	{
-		kind: 'choice', label: 'Background animation', values: ['on', 'off'], labels: ['On', 'Off'],
-		get: (c) => (c.bgAnimated ? 'on' : 'off'), set: (c, v) => ({...c, bgAnimated: v === 'on'})
-	},
-	{
-		kind: 'choice', label: 'Color theme', values: ['classic', 'mono', 'ember', 'aurora'], labels: ['Classic', 'Mono Blue', 'Ember', 'Aurora'],
-		get: (c) => c.bgTheme, set: (c, v) => ({...c, bgTheme: v as HomeConfig['bgTheme']})
-	},
-	{
-		kind: 'choice', label: 'Star density', values: ['low', 'normal', 'high'], labels: ['Low', 'Normal', 'High'],
-		get: (c) => c.bgDensity, set: (c, v) => ({...c, bgDensity: v as HomeConfig['bgDensity']})
-	},
-	{
-		kind: 'choice', label: 'Motion speed', values: ['slow', 'normal', 'fast'], labels: ['Slow', 'Normal', 'Fast'],
-		get: (c) => c.bgSpeed, set: (c, v) => ({...c, bgSpeed: v as HomeConfig['bgSpeed']})
-	},
 	{kind: 'action', label: 'Manage apps', hint: 'OK to open', action: 'apps'},
 	{kind: 'action', label: 'Reset app order', hint: 'OK to reset', action: 'reset'},
 	{kind: 'info', label: 'Version', value: `v${APP_VERSION}`}
@@ -62,8 +47,8 @@ function AppsPane ({lists, hidden, row}: {lists: Record<CatId, AppItem[]>; hidde
 		<div className="flex max-h-[52vh] flex-col gap-1 overflow-hidden overflow-y-auto pr-2">
 			{CATS.map((cat) => (
 				<div key={cat}>
-					<div className="px-6 pb-1 pt-3 text-sm font-semibold uppercase tracking-widest" style={{color: SCREENS[cat].accent}}>
-						{SCREENS[cat].label}
+					<div className="px-6 pb-1 pt-3 text-sm font-semibold uppercase tracking-widest" style={{color: CAT_META[cat].accent}}>
+						{CAT_META[cat].label}
 					</div>
 					{lists[cat].map((app) => {
 						i++;
@@ -74,16 +59,16 @@ function AppsPane ({lists, hidden, row}: {lists: Record<CatId, AppItem[]>; hidde
 							<div
 								key={app.id}
 								ref={(el) => { rowRefs.current[idx] = el; }}
-								className="flex items-center justify-between rounded-2xl px-6 py-2.5"
+								className="flex items-center justify-between rounded-xl px-6 py-2.5"
 								style={{
-									background: focused ? `${ACCENT}1f` : 'transparent',
-									border: `1px solid ${focused ? `${ACCENT}66` : 'transparent'}`
+									background: focused ? ROW_FOCUS : 'transparent',
+									border: `2px solid ${focused ? ACCENT : 'transparent'}`
 								}}
 							>
-								<span className="text-lg font-medium" style={{color: isHidden ? 'rgba(255,255,255,0.35)' : 'rgba(255,255,255,0.92)'}}>
+								<span className="text-lg font-medium" style={{color: isHidden ? '#77777f' : '#ffffff'}}>
 									{app.title}
 								</span>
-								<span className="text-base font-medium" style={{color: isHidden ? 'rgba(255,255,255,0.4)' : '#7ee7a6'}}>
+								<span className="text-base font-medium" style={{color: isHidden ? '#8a8a94' : '#7ee7a6'}}>
 									{isHidden ? 'Hidden' : 'Shown'}
 								</span>
 							</div>
@@ -110,7 +95,7 @@ function LocationPane ({inputRef, query, setQuery, results, searching, mode, res
 }) {
 	return (
 		<div className="flex flex-col gap-3">
-			<div className="px-1 text-base text-white/45">Current: <span className="text-white/80">{currentName}</span></div>
+			<div className="px-1 text-base text-white/70">Current: <span className="text-white/80">{currentName}</span></div>
 			<input
 				ref={inputRef}
 				value={query}
@@ -118,26 +103,26 @@ function LocationPane ({inputRef, query, setQuery, results, searching, mode, res
 				placeholder="Search for a city…"
 				spellCheck={false}
 				autoComplete="off"
-				className="w-full rounded-2xl px-6 py-4 text-xl text-white/95 outline-none"
+				className="w-full rounded-xl px-6 py-4 text-xl text-white/95 outline-none"
 				style={{
-					background: 'rgba(255,255,255,0.06)',
-					border: `1px solid ${mode === 'type' ? `${ACCENT}aa` : 'rgba(255,255,255,0.14)'}`
+					background: '#0c0c0e',
+					border: `2px solid ${mode === 'type' ? ACCENT : '#2c2c33'}`
 				}}
 			/>
 			<div className="flex max-h-[38vh] min-h-[6rem] flex-col gap-1 overflow-y-auto pr-1">
-				{searching && <div className="px-6 py-3 text-lg text-white/45">Searching…</div>}
+				{searching && <div className="px-6 py-3 text-lg text-white/70">Searching…</div>}
 				{!searching && !!query.trim() && results.length === 0 && (
-					<div className="px-6 py-3 text-lg text-white/45">No matches</div>
+					<div className="px-6 py-3 text-lg text-white/70">No matches</div>
 				)}
 				{results.map((g, i) => {
 					const focused = mode === 'pick' && i === resultRow;
 					return (
 						<div
 							key={`${g.label}-${g.latitude}-${g.longitude}`}
-							className="flex items-center rounded-2xl px-6 py-3"
+							className="flex items-center rounded-xl px-6 py-3"
 							style={{
-								background: focused ? `${ACCENT}1f` : 'transparent',
-								border: `1px solid ${focused ? `${ACCENT}66` : 'transparent'}`
+								background: focused ? ROW_FOCUS : 'transparent',
+								border: `2px solid ${focused ? ACCENT : 'transparent'}`
 							}}
 						>
 							<span className="text-lg font-medium text-white/90">{g.label}</span>
@@ -172,10 +157,8 @@ export default function Settings ({config, onChange, onClose, onOrderReset, list
 
 	// internal tiles (this settings screen) can't be hidden — you'd be locked out
 	const manageable = {
-		game: lists.game.filter((a) => a.launchType !== 'internal'),
-		stream: lists.stream.filter((a) => a.launchType !== 'internal'),
-		media: lists.media.filter((a) => a.launchType !== 'internal'),
-		misc: lists.misc.filter((a) => a.launchType !== 'internal')
+		inputs: lists.inputs.filter((a) => a.launchType !== 'internal'),
+		apps: lists.apps.filter((a) => a.launchType !== 'internal')
 	};
 	const flatApps = CATS.flatMap((cat) => manageable[cat]);
 	const rowCount = pane === 'main' ? ROWS.length : flatApps.length;
@@ -284,7 +267,7 @@ export default function Settings ({config, onChange, onClose, onOrderReset, list
 			: '↑↓ select · ‹ › change · OK open · Back to close';
 
 	return (
-		<div className="absolute inset-0 z-30 flex items-center justify-center" style={{background: 'rgba(0,0,0,0.72)'}}>
+		<div className="absolute inset-0 z-30 flex items-center justify-center" style={{background: 'rgba(0,0,0,0.88)'}}>
 			<div className="m3-card w-[720px] px-10 py-8" style={{animation: 'rise-in 0.35s var(--m3-ease-emphasized) both'}}>
 				<h2 className="mb-6 text-[34px] font-normal tracking-tight" style={{color: ACCENT}}>{title}</h2>
 
@@ -302,29 +285,29 @@ export default function Settings ({config, onChange, onClose, onOrderReset, list
 							return (
 								<div
 									key={def.label}
-									className="flex items-center justify-between rounded-2xl px-6 py-4"
+									className="flex items-center justify-between rounded-xl px-6 py-4"
 									style={{
-										background: focused ? `${ACCENT}1f` : 'transparent',
-										border: `1px solid ${focused ? `${ACCENT}66` : 'transparent'}`,
+										background: focused ? ROW_FOCUS : 'transparent',
+										border: `2px solid ${focused ? ACCENT : 'transparent'}`,
 										transition: 'background var(--m3-dur-short) var(--m3-ease-standard), border-color var(--m3-dur-short) var(--m3-ease-standard)'
 									}}
 								>
 									<span className="text-xl font-medium text-white/92">{def.label}</span>
 									{def.kind === 'choice' ? (
-										<span className="flex items-center gap-3 text-lg" style={{color: focused ? ACCENT : 'rgba(255,255,255,0.55)'}}>
+										<span className="flex items-center gap-3 text-lg" style={{color: focused ? ACCENT : '#b4b4be'}}>
 											{focused && <span className="opacity-70">‹</span>}
 											<span className="min-w-[104px] text-center font-medium">{def.labels[def.values.indexOf(def.get(config))]}</span>
 											{focused && <span className="opacity-70">›</span>}
 										</span>
 									) : def.kind === 'location' ? (
-										<span className="flex items-center gap-2 text-lg font-medium" style={{color: focused ? ACCENT : 'rgba(255,255,255,0.55)'}}>
+										<span className="flex items-center gap-2 text-lg font-medium" style={{color: focused ? ACCENT : '#b4b4be'}}>
 											<span className="max-w-[280px] truncate text-right">{config.location.name}</span>
 											{focused && <span className="opacity-70">›</span>}
 										</span>
 									) : def.kind === 'info' ? (
-										<span className="text-lg font-medium text-white/40">{def.value}</span>
+										<span className="text-lg font-medium text-white/60">{def.value}</span>
 									) : (
-										<span className="text-lg font-medium" style={{color: focused ? ACCENT : 'rgba(255,255,255,0.55)'}}>
+										<span className="text-lg font-medium" style={{color: focused ? ACCENT : '#b4b4be'}}>
 											{def.action === 'reset' && resetDone ? 'Done ✓' : def.hint}
 										</span>
 									)}
@@ -334,7 +317,7 @@ export default function Settings ({config, onChange, onClose, onOrderReset, list
 					</div>
 				)}
 
-				<p className="mt-6 text-center text-base text-white/40">{hint}</p>
+				<p className="mt-6 text-center text-base text-white/60">{hint}</p>
 			</div>
 		</div>
 	);

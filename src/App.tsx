@@ -1,17 +1,14 @@
 import {useState, useEffect, useCallback, useMemo, useRef, type ReactNode} from 'react';
-import Background from './components/Background';
 import Settings from './components/Settings';
-import Ambient from './components/Ambient';
 import Home from './screens/Home';
 import AltScreen from './screens/AltScreen';
 import {useRemoteNav} from './hooks/useRemoteNav';
-import {DIRECTION_TO_SCREEN, SCREENS, worldForScreen, type Direction, type ScreenDef, type ScreenId} from './lib/screens';
-import type {AppItem} from './lib/apps';
-import {buildLists, saveOrders, loadHidden, saveHidden, type CatId} from './lib/order';
+import {SCREENS, worldForScreen, type ScreenDef, type ScreenId, type CatId} from './lib/screens';
+import {appsFromLaunchPoints, inputsFromDevices, DEFAULT_INPUTS, DEMO_APPS, type AppItem} from './lib/apps';
+import {buildLists, saveOrders, loadHidden, saveHidden} from './lib/order';
 import {ConfigContext, loadConfig, saveConfig, type HomeConfig} from './lib/config';
-import {launchApp, listLaunchPoints, blockScreenSaver, assertSoundOutput, guardSoundOutput, isWebOS} from './service/luna';
+import {launchApp, listLaunchPoints, listInputs, assertSoundOutput, guardSoundOutput, isWebOS} from './service/luna';
 
-const IDLE_MS = 60_000;      // no input for this long → ambient clock
 const JITTER_MS = 150_000;   // OLED guard: shift the whole UI ±2px this often
 
 function Panel ({def, children}: {def?: ScreenDef; children: ReactNode}) {
@@ -25,60 +22,56 @@ function Panel ({def, children}: {def?: ScreenDef; children: ReactNode}) {
 
 export default function App () {
 	const [screen, setScreen] = useState<ScreenId>('home');
-	const [selected, setSelected] = useState(0);
-	const [discovered, setDiscovered] = useState<AppItem[]>([]);
+	// focused tile per list — home (apps) keeps its place while you visit Inputs
+	const [sel, setSel] = useState<Record<CatId, number>>({inputs: 0, apps: 0});
+	// what the TV actually has: installed apps + HDMI inputs (demo/default set off-TV
+	// and until the TV answers)
+	const [installed, setInstalled] = useState<AppItem[]>(() => (isWebOS() ? [] : DEMO_APPS));
+	const [inputs, setInputs] = useState<AppItem[]>(DEFAULT_INPUTS);
 	const [hidden, setHidden] = useState<Set<string>>(loadHidden);
-	// full per-category lists (hidden included); the visible slices drive the UI
-	const [lists, setLists] = useState<Record<CatId, AppItem[]>>(() => buildLists());
+	// full per-screen lists (hidden included); the visible slices drive the UI
+	const [lists, setLists] = useState<Record<CatId, AppItem[]>>(() => buildLists(installed, inputs));
 	const [moving, setMoving] = useState(false);
 	const [settingsOpen, setSettingsOpen] = useState(false);
-	const [ambient, setAmbient] = useState(false);
 	const [config, setConfig] = useState<HomeConfig>(loadConfig);
 	const [toast, setToast] = useState<string | null>(null);
 	const [launchFx, setLaunchFx] = useState<string | null>(null);   // app id pulsing
 	const [jitter, setJitter] = useState({x: 0, y: 0});
 	// snapshot of the list being reordered, restored on Back (cancel)
 	const moveSnapshot = useRef<Record<CatId, AppItem[]> | null>(null);
-	const lastInput = useRef(Date.now());
 	const toastTimer = useRef(0);
 
 	const visible = useMemo(() => ({
-		game: lists.game.filter((a) => !hidden.has(a.id)),
-		stream: lists.stream.filter((a) => !hidden.has(a.id)),
-		media: lists.media.filter((a) => !hidden.has(a.id)),
-		misc: lists.misc.filter((a) => !hidden.has(a.id))
+		inputs: lists.inputs.filter((a) => !hidden.has(a.id)),
+		apps: lists.apps.filter((a) => !hidden.has(a.id))
 	}), [lists, hidden]);
 
-	const showToast = useCallback((msg: string) => {
+	const showToast = useCallback((msg: string, ms = 2600) => {
 		setToast(msg);
 		window.clearTimeout(toastTimer.current);
-		toastTimer.current = window.setTimeout(() => setToast(null), 2600);
+		toastTimer.current = window.setTimeout(() => setToast(null), ms);
 	}, []);
 
-	// Real app list (#3 of the old worklist): merge the TV's actual launch points
-	// into the catalog — anything new lands in Misc (monogram art; WAM blocks
-	// cross-app icon paths). Runs once; harmless no-op off-webOS.
+	// Read the real app list and HDMI inputs off the TV. Runs once; off-webOS the
+	// demo apps / default inputs stay.
 	useEffect(() => {
 		if (!isWebOS()) return;
 		listLaunchPoints()
+			.then((res) => setInstalled(appsFromLaunchPoints(res.launchPoints || [])))
+			.catch((e: unknown) => {
+				// eslint-disable-next-line no-console
+				console.error('listLaunchPoints failed', e);
+				showToast(`Couldn't read the installed apps — ${e instanceof Error ? e.message : String(e)}`.slice(0, 160), 15000);
+			});
+		listInputs()
 			.then((res) => {
-				const known = new Set<string>();
-				for (const cat of ['game', 'stream', 'media', 'misc'] as CatId[]) {
-					for (const a of buildLists()[cat]) known.add(a.id);
-				}
-				const extra: AppItem[] = (res.launchPoints || [])
-					.filter((lp) => !known.has(lp.id))
-					.map((lp) => ({id: lp.id, title: lp.title, color: '#8ea2ff'}));
-				if (extra.length) {
-					setDiscovered(extra);
-					setLists(buildLists(extra));
-				}
+				const found = inputsFromDevices(res.devices || []);
+				if (found.length) setInputs(found);
 			})
-			.catch(() => { /* catalog-only is fine */ });
-	}, []);
+			.catch(() => { /* keep HDMI 1–4 */ });
+	}, [showToast]);
 
-	// Keep the TV's own screensaver away — the ambient clock replaces it.
-	useEffect(() => blockScreenSaver(), []);
+	useEffect(() => { setLists(buildLists(installed, inputs)); }, [installed, inputs]);
 
 	// eARC guard: LG home re-negotiates audio routing on focus changes; we don't,
 	// so the receiver can lose audio after boot or after we launch an app.
@@ -96,28 +89,6 @@ export default function App () {
 		return () => { cancelGuard(); document.removeEventListener('visibilitychange', onVis); };
 	}, []);
 
-	// Idle → ambient. Any input exits ambient and resets the timer. Nav is
-	// disabled while ambient, so the waking press does nothing but wake.
-	useEffect(() => {
-		const poke = () => { lastInput.current = Date.now(); setAmbient(false); };
-		window.addEventListener('keydown', poke, true);
-		window.addEventListener('pointermove', poke, true);
-		window.addEventListener('mousedown', poke, true);
-		const id = window.setInterval(() => {
-			if (!settingsOpen && Date.now() - lastInput.current >= IDLE_MS) {
-				setAmbient(true);
-				setScreen('home');   // stars only run on home; also resets nav state
-				setMoving(false);
-			}
-		}, 5000);
-		return () => {
-			window.clearInterval(id);
-			window.removeEventListener('keydown', poke, true);
-			window.removeEventListener('pointermove', poke, true);
-			window.removeEventListener('mousedown', poke, true);
-		};
-	}, [settingsOpen]);
-
 	// OLED guard: drift every fixed element by a couple of pixels now and then.
 	useEffect(() => {
 		const id = window.setInterval(() => {
@@ -126,19 +97,22 @@ export default function App () {
 		return () => window.clearInterval(id);
 	}, []);
 
-	// On entering a screen, start on the app nearest the edge we slid from (#2):
-	// Up→bottom app, Left→right-most app; Down/Right→first app.
+	// The list the remote is driving: the app rail on home, else that screen's own list.
+	const cat: CatId = screen === 'home' ? 'apps' : screen;
+	const itemCount = visible[cat].length;
+	const selected = Math.max(0, Math.min(sel[cat], itemCount - 1));
+	const setSelected = useCallback((updater: (prev: number) => number) => {
+		setSel((prev) => ({...prev, [cat]: updater(prev[cat])}));
+	}, [cat]);
+
+	// Changing screen drops any reorder in progress; Inputs always opens on its first item.
 	useEffect(() => {
 		setMoving(false);
-		if (screen === 'home') { setSelected(0); return; }
-		setSelected(SCREENS[screen].nearEnd ? visible[screen].length - 1 : 0);
-	}, [screen]);   // eslint-disable-line react-hooks/exhaustive-deps
-
-	const itemCount = screen === 'home' ? 0 : visible[screen].length;
+		if (screen === 'inputs') setSel((prev) => ({...prev, inputs: 0}));
+	}, [screen]);
 
 	const onLaunch = useCallback(() => {
-		if (screen === 'home') return;
-		const app = visible[screen][selected];
+		const app = visible[cat][selected];
 		if (!app) return;
 		if (app.launchType === 'internal') { setSettingsOpen(true); return; }
 		// pulse the tile so the press visibly registered (webOS can take a beat)
@@ -157,73 +131,49 @@ export default function App () {
 			// eslint-disable-next-line no-console
 			console.log('launch (stub, not on webOS):', app.id, app.launchType);
 		}
-	}, [screen, selected, visible, showToast]);
+	}, [cat, selected, visible, showToast]);
 
 	// --- Reorder (move) mode -------------------------------------------------
 	const onMoveStart = useCallback(() => {
-		if (screen === 'home') return;
 		moveSnapshot.current = lists;
 		setMoving(true);
-	}, [screen, lists]);
+	}, [lists]);
 
 	const onMoveStep = useCallback((delta: -1 | 1) => {
-		if (screen === 'home') return;
-		const vis = visible[screen];
+		const vis = visible[cat];
 		const target = selected + delta;
 		if (target < 0 || target >= vis.length) return;
 		// swap within the FULL list (hidden tiles keep their slots)
 		const a = vis[selected].id, b = vis[target].id;
 		setLists((prev) => {
-			const next = [...prev[screen as CatId]];
+			const next = [...prev[cat]];
 			const ia = next.findIndex((x) => x.id === a), ib = next.findIndex((x) => x.id === b);
 			[next[ia], next[ib]] = [next[ib], next[ia]];
-			return {...prev, [screen]: next};
+			return {...prev, [cat]: next};
 		});
 		setSelected(() => target);   // focus travels with the tile
-	}, [screen, selected, visible]);
-
-	const onMoveCross = useCallback((dir: Direction) => {
-		if (screen === 'home') return;
-		const target = DIRECTION_TO_SCREEN[dir];
-		if (target === screen) return;
-		const app = visible[screen][selected];
-		if (!app) return;
-		setLists((prev) => {
-			const from = prev[screen as CatId].filter((x) => x.id !== app.id);
-			const to = [...prev[target], app];
-			const next = {...prev, [screen]: from, [target]: to};
-			saveOrders(next);
-			return next;
-		});
-		setMoving(false);
-		moveSnapshot.current = null;
-		setSelected((p) => Math.max(0, Math.min(p, visible[screen].length - 2)));
-		if (visible[screen].length <= 1) setScreen('home');
-		showToast(`Moved ${app.title} to ${SCREENS[target].label}`);
-	}, [screen, selected, visible, showToast]);
+	}, [cat, selected, visible, setSelected]);
 
 	const onMoveCommit = useCallback(() => {
-		if (screen !== 'home') saveOrders(lists);
+		saveOrders(lists);
 		setMoving(false);
 		moveSnapshot.current = null;
-	}, [screen, lists]);
+	}, [lists]);
 
 	const onMoveCancel = useCallback(() => {
 		if (moveSnapshot.current) {
 			const snap = moveSnapshot.current;
 			setLists(snap);
-			if (screen !== 'home') {
-				const len = snap[screen as CatId].filter((a) => !hidden.has(a.id)).length;
-				setSelected((p) => Math.max(0, Math.min(p, len - 1)));
-			}
+			const len = snap[cat].filter((a) => !hidden.has(a.id)).length;
+			setSelected((p) => Math.max(0, Math.min(p, len - 1)));
 		}
 		setMoving(false);
 		moveSnapshot.current = null;
-	}, [screen, hidden]);
+	}, [cat, hidden, setSelected]);
 
 	// --- Settings ------------------------------------------------------------
 	const onConfigChange = useCallback((c: HomeConfig) => { setConfig(c); saveConfig(c); }, []);
-	const onOrderReset = useCallback(() => setLists(buildLists(discovered)), [discovered]);
+	const onOrderReset = useCallback(() => setLists(buildLists(installed, inputs)), [installed, inputs]);
 	const closeSettings = useCallback(() => setSettingsOpen(false), []);
 	const onToggleHide = useCallback((id: string) => {
 		setHidden((prev) => {
@@ -236,16 +186,14 @@ export default function App () {
 
 	useRemoteNav({
 		screen, setScreen, selected, setSelected, itemCount, onLaunch,
-		moving, onMoveStart, onMoveStep, onMoveCross, onMoveCommit, onMoveCancel,
-		enabled: !settingsOpen && !ambient
+		moving, onMoveStart, onMoveStep, onMoveCommit, onMoveCancel,
+		enabled: !settingsOpen
 	});
 	const world = worldForScreen(screen);
 
 	return (
 		<ConfigContext.Provider value={config}>
-			<div className="relative h-full w-full overflow-hidden bg-background">
-				<Background screen={screen} ambient={ambient} />
-
+			<div className="relative h-full w-full overflow-hidden bg-black">
 				{/* World pan is a pure CSS transform transition — compositor-only, no
 				   per-frame JS. Changing `screen` moves the whole cross of panels.
 				   The extra px offset is the slow OLED anti-burn-in jitter. */}
@@ -255,12 +203,19 @@ export default function App () {
 						transform: `translate(calc(${world.x} + ${jitter.x}px), calc(${world.y} + ${jitter.y}px))`,
 						// Longer, gentle ease-in-out — smoother in and out of home (user pref:
 						// slower is fine if smoother). Compositor-only, so cost is unchanged.
-						transition: 'transform 0.55s cubic-bezier(0.4, 0, 0.2, 1), opacity 1s ease',
-						willChange: 'transform',
-						opacity: ambient ? 0 : 1   // ambient: only stars + clock remain
+						transition: 'transform 0.55s cubic-bezier(0.4, 0, 0.2, 1)',
+						willChange: 'transform'
 					}}
 				>
-					<Panel><Home active={screen === 'home' && !ambient} /></Panel>
+					<Panel>
+						<Home
+							active={screen === 'home'}
+							items={visible.apps}
+							selected={Math.max(0, Math.min(sel.apps, visible.apps.length - 1))}
+							moving={moving && screen === 'home'}
+							launchingId={screen === 'home' ? launchFx : null}
+						/>
+					</Panel>
 					{Object.values(SCREENS).map((def) => (
 						<Panel key={def.id} def={def}>
 							<AltScreen
@@ -275,8 +230,6 @@ export default function App () {
 					))}
 				</div>
 
-				{ambient && <Ambient />}
-
 				{settingsOpen && (
 					<Settings
 						config={config} onChange={onConfigChange} onClose={closeSettings}
@@ -285,13 +238,13 @@ export default function App () {
 					/>
 				)}
 
-				{/* Feedback toast (launch errors, cross-category moves) */}
+				{/* Feedback toast (launch errors) */}
 				<div
 					className="absolute left-1/2 top-[6vh] z-50 -translate-x-1/2 whitespace-nowrap rounded-full px-7 py-3.5 text-lg font-medium"
 					style={{
-						color: '#eef1ff',
-						background: 'rgba(20,24,38,0.92)',
-						border: '1px solid rgba(124,168,255,0.4)',
+						color: '#ffffff',
+						background: '#000000',
+						border: '2px solid #7ca8ff',
 						opacity: toast ? 1 : 0,
 						transform: `translateX(-50%) translateY(${toast ? 0 : -8}px)`,
 						transition: 'opacity 0.3s ease, transform 0.3s ease',

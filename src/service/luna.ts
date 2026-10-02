@@ -97,8 +97,8 @@ export function getSoundOutputState (): Promise<{configured: string; current: st
  * Persistent subscription to the live sound output. audiod pushes a fresh
  * getSoundOutput payload every time it re-routes the sink, so `onPush` fires the
  * instant the output flips — falls back to tv_speaker, or eARC links and the OS
- * switches to external_arc. Long-lived SUBSCRIPTION bridge, modelled on
- * blockScreenSaver — returns a cancel fn. No-op off-webOS. getSoundOutput
+ * switches to external_arc. Long-lived SUBSCRIPTION bridge — returns a
+ * cancel fn. No-op off-webOS. getSoundOutput
  * supports {subscribe:true} on this TV (com.webos.service.audio, API level 13).
  */
 export function subscribeSoundOutput (onPush: (msg: SoundOutputMsg) => void): () => void {
@@ -190,34 +190,26 @@ export function guardSoundOutput (bootWindowMs = 60_000, retryMs = 2_000): () =>
 
 export interface LaunchPoint {id: string; title: string; icon: string; launchPointId?: string}
 
-/** The apps the user actually has on their launcher ribbon (excludes hidden system apps). */
-export function listLaunchPoints (): Promise<{launchPoints?: LaunchPoint[]}> {
-	return lunaCall('com.webos.applicationManager', 'listLaunchPoints', {});
+// Our own background service (service/service.js). It runs as root, so it can read
+// lists the sandboxed web app isn't allowed to ask the system for directly.
+const OWN_SERVICE = 'tld.my.customhome.service';
+
+/** Ask our service first, then the system directly; the error names both failures. */
+function viaService<T> (method: string, service: string, direct: string): Promise<T> {
+	return lunaCall<T>(OWN_SERVICE, method, {}, 9000).catch((e1: Error) =>
+		lunaCall<T>(service, direct, {}).catch((e2: Error) => {
+			throw new Error(`service: ${e1.message}; direct: ${e2.message}`);
+		})
+	);
 }
 
-/**
- * Keep the TV's built-in screensaver from covering us (our ambient clock replaces
- * it). tvpower asks registered clients before showing the saver; answering
- * ack:false vetoes it (same mechanism youtube-webos uses). Long-lived
- * SUBSCRIPTION bridge — returns a cancel fn. No-op off-webOS. Does not affect
- * the panel's off-timer / power saving.
- */
-export function blockScreenSaver (clientName = 'tld.my.customhome'): () => void {
-	const Bridge = typeof window !== 'undefined' ? window.PalmServiceBridge : undefined;
-	if (!Bridge) return () => { /* not on webOS */ };
+/** The apps the user actually has on their launcher ribbon (excludes hidden system apps). */
+export function listLaunchPoints (): Promise<{launchPoints?: LaunchPoint[]}> {
+	return viaService('listApps', 'com.webos.applicationManager', 'listLaunchPoints');
+}
 
-	const bridge = new Bridge();
-	bridge.onservicecallback = (msg) => {
-		let data: {timestamp?: string} = {};
-		try { data = JSON.parse(msg); } catch { return; }
-		if (data.timestamp === undefined) return;
-		lunaCall('com.webos.service.tvpower', 'power/responseScreenSaverRequest', {
-			clientName, ack: false, timestamp: data.timestamp
-		}).catch(() => { /* best-effort — worst case the saver shows */ });
-	};
-	try {
-		bridge.call('luna://com.webos.service.tvpower/power/registerScreenSaverRequest',
-			JSON.stringify({clientName, subscribe: true}));
-	} catch { /* noop */ }
-	return () => { try { bridge.cancel?.(); } catch { /* noop */ } };
+/** HDMI/other inputs known to the TV's external-input manager, with user-set labels. */
+export interface InputDevice {id?: string; appId?: string; label?: string; connected?: boolean}
+export function listInputs (): Promise<{devices?: InputDevice[]}> {
+	return viaService('listInputs', 'com.webos.service.eim', 'getAllInputStatus');
 }

@@ -10,7 +10,7 @@ const TV_IP = process.env.TV_IP || '192.168.1.153';   // override: TV_IP=x.x.x.x
 const SVC = '/media/developer/apps/usr/palm/services/tld.my.customhome.service';
 const run = (cmd) => { console.log(`\n$ ${cmd}`); execSync(cmd, {stdio: 'inherit'}); };
 
-// 1. Build (Vite + Lightning CSS downlevel to Chromium 108)
+// 1. Build (Vite + legacy CSS rewrite + Lightning CSS downlevel to Chromium 79)
 run('npm run build');
 
 // 2. Clean old ipks, then package APP (dist) + the Home-button/autostart SERVICE together,
