@@ -107,25 +107,44 @@ webOS `ares` CLI.
 
 Don't want to build anything? If your TV is already
 [rooted](https://github.com/webosbrew/webos-homebrew-channel) with SSH enabled,
+<<<<<<< Updated upstream
 grab the launcher for your OS from the
 [**latest release**](https://github.com/marc-fischer/webos-custom-home/releases/latest)
 and run it — it asks for your TV's IP and does the rest --install + boot autostart
 + HOME-button takeover-- over SSH. No Node, no `ares` CLI, no building.
+=======
+download the launcher for your OS from [`installer/`](installer/) and run it — it
+asks for your TV's IP and does the rest (install + boot autostart + HOME-button
+takeover) over SSH. No Node, no `ares` CLI, no building.
+>>>>>>> Stashed changes
 
 | Your computer | File | How to run |
 |---|---|---|
-| **Windows 10/11** | `install.bat` | Double-click |
-| **macOS** | `install.command` | Double-click (right-click → Open the first time) |
-| **Linux / WSL / Git Bash** | `install.command` | `bash install.command` |
+| **Windows 10/11** | [`install.bat`](installer/install.bat) | Double-click |
+| **macOS** | [`install.command`](installer/install.command) | Double-click (right-click → Open the first time) |
+| **Linux / WSL / Git Bash** | [`install.command`](installer/install.command) | `bash install.command` |
 
 Or, from any terminal, the same thing as a one-liner:
 
 ```bash
+<<<<<<< HEAD
 ssh root@<TV_IP> "curl -fsSL https://github.com/marc-fischer/webos-custom-home/releases/download/v0.4.3/tv-install.sh | sh"
+=======
+<<<<<<< Updated upstream
+ssh root@<TV_IP> "curl -fsSL https://github.com/zzeppieri/webos-custom-home/releases/download/v0.4.2/tv-install.sh | sh"
+=======
+ssh root@<TV_IP> "curl -fsSL https://raw.githubusercontent.com/marc-fischer/webos-custom-home/v0.4.3/installer/tv-install.sh | sh"
+>>>>>>> Stashed changes
+>>>>>>> 47b4129 (update installer links to v0.4.3)
 ```
 
-See [`installer/`](installer/) for details and the uninstaller. Prefer the
-classic `ares` sideload? `ares-install --device tv <the .ipk from the release>`.
+See [`installer/`](installer/) for details and the uninstaller.
+
+The installers fetch the app package from the
+[v0.4.3 release](https://github.com/marc-fischer/webos-custom-home/releases/tag/v0.4.3):
+[`tld.my.customhome_0.4.3_all.ipk`](https://github.com/marc-fischer/webos-custom-home/releases/download/v0.4.3/tld.my.customhome_0.4.3_all.ipk).
+Prefer the classic `ares` sideload? Download that file and run
+`ares-install --device tv tld.my.customhome_0.4.3_all.ipk`.
 
 > **eARC receiver losing audio on power-on?** Some LG TVs bring an eARC/ARC AV
 > receiver up *desynced* after a cold boot or standby-wake — the TV shows the
@@ -137,9 +156,18 @@ classic `ares` sideload? `ares-install --device tv <the .ipk from the release>`.
 > use it only if you have this exact problem:
 >
 > ```bash
+<<<<<<< HEAD
 > ssh root@<TV_IP> "curl -fsSL https://github.com/marc-fischer/webos-custom-home/releases/download/v0.4.3/tv-install-earc.sh | sh"
+=======
+<<<<<<< Updated upstream
+> ssh root@<TV_IP> "curl -fsSL https://github.com/zzeppieri/webos-custom-home/releases/download/v0.4.2/tv-install-earc.sh | sh"
+=======
+> ssh root@<TV_IP> "curl -fsSL https://raw.githubusercontent.com/marc-fischer/webos-custom-home/v0.4.3/installer/tv-install-earc.sh | sh"
+>>>>>>> Stashed changes
+>>>>>>> 47b4129 (update installer links to v0.4.3)
 > ```
 >
+> Package: [`tld.my.customhome_0.4.3_earc_all.ipk`](https://github.com/marc-fischer/webos-custom-home/releases/download/v0.4.3/tld.my.customhome_0.4.3_earc_all.ipk).
 > Everyone else should use the standard install above (it never touches eARC).
 
 The app starts on a placeholder location — **set your own city right in the app**

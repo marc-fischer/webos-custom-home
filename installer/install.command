@@ -7,7 +7,15 @@
 # It asks for your TV's IP and installs everything over SSH. Nothing to build or
 # download by hand. Your TV must already be ROOTED (Homebrew Channel) with SSH on.
 
+<<<<<<< HEAD
 INSTALLER_URL="https://github.com/marc-fischer/webos-custom-home/releases/download/v0.4.3/tv-install.sh"
+=======
+<<<<<<< Updated upstream
+INSTALLER_URL="https://github.com/zzeppieri/webos-custom-home/releases/download/v0.4.2/tv-install.sh"
+=======
+INSTALLER_URL="https://raw.githubusercontent.com/marc-fischer/webos-custom-home/v0.4.3/installer/tv-install.sh"
+>>>>>>> Stashed changes
+>>>>>>> 47b4129 (update installer links to v0.4.3)
 
 echo "=================================================="
 echo "  webOS Custom Home  —  one-click installer (v0.4.3)"

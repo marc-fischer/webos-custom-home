@@ -1,6 +1,14 @@
 #!/bin/sh
 # webOS Custom Home — on-device uninstaller. Run with:
+<<<<<<< HEAD
 #   ssh root@<TV_IP> "curl -fsSL https://github.com/marc-fischer/webos-custom-home/releases/download/v0.4.3/tv-uninstall.sh | sh"
+=======
+<<<<<<< Updated upstream
+#   ssh root@<TV_IP> "curl -fsSL https://github.com/zzeppieri/webos-custom-home/releases/download/v0.4.2/tv-uninstall.sh | sh"
+=======
+#   ssh root@<TV_IP> "curl -fsSL https://raw.githubusercontent.com/marc-fischer/webos-custom-home/v0.4.3/installer/tv-uninstall.sh | sh"
+>>>>>>> Stashed changes
+>>>>>>> 47b4129 (update installer links to v0.4.3)
 # Removes the boot hook, stops the watcher, and removes the app. Restores stock
 # behavior — nothing touched the read-only OS, so no factory reset is needed.
 

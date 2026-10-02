@@ -5,7 +5,15 @@ REM Just double-click this file. It asks for your TV's IP and installs everythin
 REM over SSH (ssh + curl ship with Windows 10/11). Your TV must already be ROOTED
 REM (Homebrew Channel) with SSH enabled.
 
+<<<<<<< HEAD
 set "INSTALLER_URL=https://github.com/marc-fischer/webos-custom-home/releases/download/v0.4.3/tv-install.sh"
+=======
+<<<<<<< Updated upstream
+set "INSTALLER_URL=https://github.com/zzeppieri/webos-custom-home/releases/download/v0.4.2/tv-install.sh"
+=======
+set "INSTALLER_URL=https://raw.githubusercontent.com/marc-fischer/webos-custom-home/v0.4.3/installer/tv-install.sh"
+>>>>>>> Stashed changes
+>>>>>>> 47b4129 (update installer links to v0.4.3)
 
 echo ==================================================
 echo   webOS Custom Home  -  one-click installer (v0.4.3)

@@ -12,9 +12,14 @@ The TV also needs internet access (it downloads the app itself).
 
 ## Install
 
+<<<<<<< Updated upstream
 Download the launcher for your OS from the
 [**v0.4.3 release**](https://github.com/marc-fischer/webos-custom-home/releases/tag/v0.4.3)
 and run it:
+=======
+Download the launcher for your OS from this folder
+([`install.bat`](install.bat) or [`install.command`](install.command)) and run it:
+>>>>>>> Stashed changes
 
 | Your computer | File | How to run |
 |---|---|---|
@@ -32,13 +37,29 @@ changed it).
 If you already live in a terminal, skip the launchers entirely:
 
 ```sh
+<<<<<<< HEAD
 ssh root@<TV_IP> "curl -fsSL https://github.com/marc-fischer/webos-custom-home/releases/download/v0.4.3/tv-install.sh | sh"
+=======
+<<<<<<< Updated upstream
+ssh root@<TV_IP> "curl -fsSL https://github.com/zzeppieri/webos-custom-home/releases/download/v0.4.2/tv-install.sh | sh"
+=======
+ssh root@<TV_IP> "curl -fsSL https://raw.githubusercontent.com/marc-fischer/webos-custom-home/v0.4.3/installer/tv-install.sh | sh"
+>>>>>>> Stashed changes
+>>>>>>> 47b4129 (update installer links to v0.4.3)
 ```
 
 ## Uninstall
 
 ```sh
+<<<<<<< HEAD
 ssh root@<TV_IP> "curl -fsSL https://github.com/marc-fischer/webos-custom-home/releases/download/v0.4.3/tv-uninstall.sh | sh"
+=======
+<<<<<<< Updated upstream
+ssh root@<TV_IP> "curl -fsSL https://github.com/zzeppieri/webos-custom-home/releases/download/v0.4.2/tv-uninstall.sh | sh"
+=======
+ssh root@<TV_IP> "curl -fsSL https://raw.githubusercontent.com/marc-fischer/webos-custom-home/v0.4.3/installer/tv-uninstall.sh | sh"
+>>>>>>> Stashed changes
+>>>>>>> 47b4129 (update installer links to v0.4.3)
 ```
 
 Nothing here touches the read-only OS, so uninstalling fully restores stock
