@@ -14,7 +14,7 @@ function DateLine () {
 	return (
 		<div className="text-right">
 			<div className="text-[26px] font-medium leading-tight tracking-tight text-white/92">{weekday}</div>
-			<div className="text-base font-normal text-white/55">{rest}</div>
+			<div className="text-base font-normal text-white/75">{rest}</div>
 		</div>
 	);
 }
@@ -40,8 +40,8 @@ function WeatherBlock () {
 		return () => { alive = false; clearInterval(id); };
 	}, [tempUnit, location]);
 
-	if (err) return <div className="text-right text-base font-normal text-white/40">Weather —</div>;
-	if (!fc) return <div className="text-right text-base font-normal text-white/40">Loading…</div>;
+	if (err) return <div className="text-right text-base font-normal text-white/60">Weather —</div>;
+	if (!fc) return <div className="text-right text-base font-normal text-white/60">Loading…</div>;
 
 	return (
 		<div className="flex w-full flex-col items-end gap-3">
@@ -50,7 +50,7 @@ function WeatherBlock () {
 				<span className="text-[32px] leading-none opacity-95">{fc.now.glyph}</span>
 				<div className="text-right leading-tight">
 					<div className="text-2xl font-medium text-white/92">{fc.now.temp}{fc.now.unit}</div>
-					<div className="text-sm font-normal text-white/55">{fc.now.label}</div>
+					<div className="text-sm font-normal text-white/75">{fc.now.label}</div>
 				</div>
 			</div>
 
@@ -58,7 +58,7 @@ function WeatherBlock () {
 			<div className="flex justify-end gap-3">
 				{fc.hours.map((h) => (
 					<div key={h.hour} className="flex w-11 flex-col items-center gap-0.5">
-						<span className="text-xs font-medium text-white/45">{hourLabel(h.hour, clock24)}</span>
+						<span className="text-xs font-medium text-white/70">{hourLabel(h.hour, clock24)}</span>
 						<span className="text-lg leading-tight opacity-90">{h.glyph}</span>
 						<span className="text-sm font-medium text-white/80">{h.temp}°</span>
 					</div>
@@ -71,11 +71,11 @@ function WeatherBlock () {
 			<div className="flex w-full justify-between px-1">
 				{fc.days.map((d) => (
 					<div key={d.label} className="flex flex-col items-center gap-0.5">
-						<span className="text-xs font-medium text-white/50">{d.label}</span>
+						<span className="text-xs font-medium text-white/70">{d.label}</span>
 						<span className="text-lg leading-tight opacity-90">{d.glyph}</span>
 						<span className="text-sm font-medium tabular-nums">
 							<span className="text-white/85">{d.hi}°</span>
-							<span className="text-white/40">/{d.lo}°</span>
+							<span className="text-white/60">/{d.lo}°</span>
 						</span>
 					</div>
 				))}

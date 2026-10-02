@@ -91,7 +91,7 @@ That last command doubles as your source of truth for **app IDs** in step 7.
 ## 5. Get the project and build it
 
 ```bash
-git clone https://github.com/zzeppieri/webos-custom-home.git
+git clone https://github.com/marc-fischer/webos-custom-home.git
 cd webos-custom-home
 npm install
 npm run dev        # optional: preview in a desktop browser at the printed URL
@@ -119,24 +119,22 @@ the TV. If packaging errors with *"Failed to minify code,"* you're missing
 
 ## 7. Make it yours (apps, weather, icons)
 
-**Apps** — edit [`src/lib/apps.ts`](../src/lib/apps.ts). Each tile:
+**Apps** — nothing to edit: the home screen lists whatever is installed on the TV
+(read at startup through the app's background service), and the Inputs screen lists
+the TV's HDMI inputs. Reorder tiles by holding **OK**; hide entries under
+**Settings → Manage apps**.
 
-```ts
-{ id: 'netflix', title: 'Netflix', color: '#e50914', icon: 'icons/netflix.png' }
-```
+To give an app nicer artwork, add its app ID to the `KNOWN` table in
+[`src/lib/apps.ts`](../src/lib/apps.ts) with a brand color and, optionally, an icon
+from [`public/icons/`](../public/icons/). Find IDs with
+`ares-launch --device tv --listApp`.
 
-- `id` must be a real app ID from `ares-launch --device tv --listApp`.
-- HDMI inputs use `launchType: 'input'`, e.g. `com.webos.app.hdmi2` for a PS5.
-- The app also merges your TV's real launch points at runtime, dropping any it
-  doesn't recognize into **Misc** — so unlisted apps still appear.
+**Weather** — pick your city on the TV under **Settings → Location**. Open-Meteo
+needs no key.
 
-**Weather** — set your coordinates in
-[`src/service/weather.ts`](../src/service/weather.ts). Open-Meteo needs no key.
-
-**Icons** — drop `.png` files into [`public/icons/`](../public/icons/) and
-reference them by `icons/<name>.png`. WAM sandboxes web apps, so you can't point
-at another app's icon on disk — bundle a copy. Missing icons fall back to a
-monogram.
+**Icons** — apps you haven't added artwork for use the TV's own icon, which the
+background service copies into this app's folder (web apps can't read another app's
+files). If that isn't possible, the tile shows a letter instead.
 
 Re-run `npm run deploy` after any change.
 

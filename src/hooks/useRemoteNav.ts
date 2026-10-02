@@ -19,19 +19,17 @@ interface Handlers {
 	moving: boolean;
 	onMoveStart: () => void;
 	onMoveStep: (delta: -1 | 1) => void;
-	/** cross-axis press while moving → send the tile to that spatial category */
-	onMoveCross: (dir: Direction) => void;
 	onMoveCommit: () => void;
 	onMoveCancel: () => void;
 	/** settings overlay open → it owns the keys, this hook goes quiet */
 	enabled: boolean;
 }
 
-// One handler for the whole app. On home, directions change screen. On an alt
-// screen, the along-axis arrows move the list selection, the cross-axis arrow or
-// Back returns home, a short OK press launches, and HOLDING OK enters move mode
-// (arrows reorder the tile, OK saves, Back cancels).
-export function useRemoteNav ({screen, setScreen, selected, setSelected, itemCount, onLaunch, moving, onMoveStart, onMoveStep, onMoveCross, onMoveCommit, onMoveCancel, enabled}: Handlers) {
+// One handler for the whole app. Home carries the app rail: Left / Right move along
+// it (clamped), Up opens Inputs. On Inputs, Up / Down move the selection and running
+// past either end, a cross-axis arrow or Back returns home. On both, a short OK press
+// launches and HOLDING OK enters move mode (arrows reorder, OK saves, Back cancels).
+export function useRemoteNav ({screen, setScreen, selected, setSelected, itemCount, onLaunch, moving, onMoveStart, onMoveStep, onMoveCommit, onMoveCancel, enabled}: Handlers) {
 	// long-press bookkeeping survives re-renders but never triggers them
 	const hold = useRef<{timer: number; fired: boolean}>({timer: 0, fired: false});
 
@@ -43,7 +41,6 @@ export function useRemoteNav ({screen, setScreen, selected, setSelected, itemCou
 			const dir = KEY_TO_DIR[e.key];
 
 			if (e.key === 'Enter') {
-				if (screen === 'home') return;
 				e.preventDefault();
 				if (e.repeat) return;
 				// commit reorder; flag the press so its keyup can't double as a launch
@@ -65,38 +62,29 @@ export function useRemoteNav ({screen, setScreen, selected, setSelected, itemCou
 			if (!dir) return;
 			e.preventDefault();
 
-			if (screen === 'home') {
-				setScreen(DIRECTION_TO_SCREEN[dir]);
-				return;
-			}
+			const onHome = screen === 'home';
+			const vertical = !onHome && SCREENS[screen as Exclude<ScreenId, 'home'>].orientation === 'vertical';
+			const along = vertical ? {next: 'down', prev: 'up'} : {next: 'right', prev: 'left'};
+			const step = dir === along.next ? 1 : dir === along.prev ? -1 : 0;
 
-			const def = SCREENS[screen];
-			const along = def.orientation === 'vertical'
-				? {next: 'down', prev: 'up'}
-				: {next: 'right', prev: 'left'};
-
-			// Move mode: along-axis arrows shift the held tile; ends clamp (never
-			// exits the screen mid-reorder); a cross-axis press sends the tile to
-			// that spatial category (up=Gaming, down=Streaming, left=Media, right=Misc).
+			// Move mode: along-axis arrows shift the held tile; ends clamp and
+			// cross-axis presses do nothing (never leaves the list mid-reorder).
 			if (moving) {
-				if (dir === along.next) onMoveStep(1);
-				else if (dir === along.prev) onMoveStep(-1);
-				else onMoveCross(dir);
+				if (step) onMoveStep(step);
 				return;
 			}
 
-			// On an alt screen: move along the list axis. Pressing PAST either end —
-			// including the reverse of the direction you entered with — returns home,
-			// as does any cross-axis press. (Enter Gaming via Up → Down returns home;
-			// enter Media via Left → Right returns home.)
-			if (dir === along.next) {
-				if (selected >= itemCount - 1) setScreen('home');
-				else setSelected((p) => Math.min(itemCount - 1, p + 1));
-			} else if (dir === along.prev) {
-				if (selected <= 0) setScreen('home');
-				else setSelected((p) => Math.max(0, p - 1));
+			if (step) {
+				const target = selected + step;
+				if (target >= 0 && target < itemCount) setSelected(() => target);
+				else if (!onHome) setScreen('home');   // ran past the end of Inputs
+				return;
+			}
+			// cross-axis: from home it opens that direction's screen (if any), elsewhere it leaves
+			if (onHome) {
+				const target = DIRECTION_TO_SCREEN[dir];
+				if (target) setScreen(target);
 			} else {
-				// cross-axis press leaves the screen (e.g. left/right on a vertical list)
 				setScreen('home');
 			}
 		};
@@ -105,7 +93,7 @@ export function useRemoteNav ({screen, setScreen, selected, setSelected, itemCou
 			if (e.key !== 'Enter') return;
 			window.clearTimeout(hold.current.timer);
 			// short press (hold never fired) while not in move mode → launch
-			if (!hold.current.fired && !moving && screen !== 'home') onLaunch();
+			if (!hold.current.fired && !moving) onLaunch();
 			hold.current.fired = false;
 		};
 
@@ -116,5 +104,5 @@ export function useRemoteNav ({screen, setScreen, selected, setSelected, itemCou
 			window.removeEventListener('keydown', onKeyDown);
 			window.removeEventListener('keyup', onKeyUp);
 		};
-	}, [screen, setScreen, selected, setSelected, itemCount, onLaunch, moving, onMoveStart, onMoveStep, onMoveCross, onMoveCommit, onMoveCancel, enabled]);
+	}, [screen, setScreen, selected, setSelected, itemCount, onLaunch, moving, onMoveStart, onMoveStep, onMoveCommit, onMoveCancel, enabled]);
 }

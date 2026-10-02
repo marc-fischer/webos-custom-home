@@ -133,7 +133,7 @@ const ElasticText = React.forwardRef<HTMLSpanElement, ElasticTextProps>(
     ref,
   ) => {
     const reducedMotion = useReducedMotion() ?? false;
-    const containerRef = React.useRef<HTMLSpanElement>(null);
+    const containerRef = React.useRef<HTMLSpanElement | null>(null);
     const mergedRef = React.useCallback(
       (node: HTMLSpanElement | null) => {
         containerRef.current = node;
